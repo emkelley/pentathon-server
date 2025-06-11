@@ -15,6 +15,7 @@ class TimerManager {
     this.errorCount = 0;
     this.maxErrors = 10;
     this.lastBroadcast = null;
+    this.lastRecoveryAttempt = null; // Track last recovery attempt
   }
 
   log(level, message, data = null) {
@@ -188,7 +189,7 @@ class TimerManager {
 
       this.log("info", `Starting timer with ${this.timerState.timeRemaining} seconds remaining`);
 
-      // Use a drift-correcting timer instead of setInterval
+      // Use a more stable timer that doesn't aggressively correct drift
       const tick = () => {
         try {
           if (!this.timerState.isActive) {
@@ -204,7 +205,6 @@ class TimerManager {
           if (this.timerState.timeRemaining > 0) {
             this.timerState.timeRemaining--;
 
-            // Only broadcast every second, not every tick (in case of catch-up)
             this.broadcast({
               type: "timer_update",
               timeRemaining: this.timerState.timeRemaining,
@@ -212,13 +212,26 @@ class TimerManager {
               drift: Math.round(drift),
             });
 
-            // Adjust next timeout to compensate for drift
-            const nextTimeout = Math.max(0, 1000 - drift);
+            // Use consistent 1000ms intervals instead of drift correction
+            // Only apply minor corrections for significant drift (>500ms)
+            let nextTimeout = 1100;
+            if (Math.abs(drift) > 500) {
+              // Only correct for very significant drift, and limit the correction
+              const correction = Math.sign(drift) * Math.min(Math.abs(drift), 100);
+              nextTimeout = Math.max(900, Math.min(1100, 1000 - correction));
+              this.log(
+                "warn",
+                `Significant timer drift detected: ${Math.round(
+                  drift
+                )}ms, correcting by ${Math.round(correction)}ms`
+              );
+            }
+
             this.timerInterval = setTimeout(tick, nextTimeout);
 
-            // Log significant drift
+            // Log drift but don't aggressively correct it
             if (Math.abs(drift) > 100) {
-              this.log("warn", `Timer drift detected: ${Math.round(drift)}ms`);
+              this.log("debug", `Timer drift: ${Math.round(drift)}ms`);
             }
           } else {
             this.log("info", "Timer reached zero, stopping");
@@ -231,7 +244,7 @@ class TimerManager {
           }
         } catch (error) {
           this.log("error", "Error in timer tick", error.message);
-          // Try to recover by scheduling next tick
+          // Try to recover by scheduling next tick with standard interval
           if (this.timerState.isActive && this.timerState.timeRemaining > 0) {
             this.timerInterval = setTimeout(tick, 1000);
           } else {
@@ -366,6 +379,19 @@ class TimerManager {
 
   // Recovery method
   recover() {
+    // Prevent frequent recovery attempts (minimum 30 seconds between attempts)
+    const now = Date.now();
+    if (this.lastRecoveryAttempt && now - this.lastRecoveryAttempt < 30000) {
+      this.log(
+        "warn",
+        `Recovery attempt ignored - cooldown active (${Math.round(
+          (30000 - (now - this.lastRecoveryAttempt)) / 1000
+        )}s remaining)`
+      );
+      return false;
+    }
+
+    this.lastRecoveryAttempt = now;
     this.log("info", "Attempting timer recovery...");
 
     try {
