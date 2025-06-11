@@ -8,8 +8,6 @@ class TimerManager {
       settings: { ...defaultSettings },
     };
     this.timerInterval = null;
-    this.startTime = null; // When the timer was started
-    this.baseTimeRemaining = null; // Time remaining when timer was started
     this.broadcastCallback = null;
     this.saveStateCallback = null;
     this.errorCount = 0;
@@ -43,7 +41,6 @@ class TimerManager {
       } catch (error) {
         this.errorCount++;
         this.log("error", `Broadcast failed (${this.errorCount}/${this.maxErrors})`, error.message);
-
         if (this.errorCount >= this.maxErrors) {
           this.log("error", "Max broadcast errors reached, continuing without broadcasts");
           this.broadcastCallback = null;
@@ -52,27 +49,7 @@ class TimerManager {
     }
   }
 
-  // Calculate current time remaining based on elapsed time
-  getCurrentTimeRemaining() {
-    if (!this.timerState.isActive || !this.startTime || !this.baseTimeRemaining) {
-      return this.timerState.timeRemaining;
-    }
-
-    const elapsedSeconds = Math.floor((Date.now() - this.startTime) / 1000);
-    const currentTimeRemaining = Math.max(0, this.baseTimeRemaining - elapsedSeconds);
-
-    return currentTimeRemaining;
-  }
-
-  // Update the stored time remaining based on actual elapsed time
-  updateTimeRemaining() {
-    if (this.timerState.isActive) {
-      this.timerState.timeRemaining = this.getCurrentTimeRemaining();
-    }
-  }
-
   getState() {
-    this.updateTimeRemaining();
     return {
       ...this.timerState,
       lastUpdate: Date.now(),
@@ -81,15 +58,11 @@ class TimerManager {
   }
 
   getSettings() {
-    this.log("debug", "Getting settings", this.timerState.settings);
     return { ...this.timerState.settings };
   }
 
   updateSettings(settings) {
     try {
-      this.log("debug", "Updating settings", settings);
-      this.log("debug", "Current settings before update", this.timerState.settings);
-
       // Handle existing settings
       if (typeof settings.regularSubTime === "number" && settings.regularSubTime >= 0) {
         this.timerState.settings.regularSubTime = settings.regularSubTime;
@@ -116,7 +89,6 @@ class TimerManager {
 
       // Handle timer styling settings
       let stylingUpdated = false;
-
       if (typeof settings.timerColor === "string") {
         this.timerState.settings.timerColor = settings.timerColor;
         stylingUpdated = true;
@@ -183,8 +155,6 @@ class TimerManager {
         }
       }
 
-      this.log("info", "Settings updated successfully");
-      this.log("debug", "Final settings after update", this.timerState.settings);
       return { ...this.timerState.settings };
     } catch (error) {
       this.log("error", "Error updating settings", error.message);
@@ -194,46 +164,33 @@ class TimerManager {
 
   start() {
     try {
-      // Always stop any existing timer first
-      this.stop();
+      this.stop(); // Always stop any existing timer first
 
       this.timerState.isActive = true;
-      this.startTime = Date.now();
-      this.baseTimeRemaining = this.timerState.timeRemaining;
-
       this.log("info", `Starting timer with ${this.timerState.timeRemaining} seconds remaining`);
 
-      // Simple interval that just broadcasts current state
+      // Simple countdown - decrement every second
       this.timerInterval = setInterval(() => {
-        try {
-          if (!this.timerState.isActive) {
-            this.stop();
-            return;
-          }
+        if (!this.timerState.isActive) {
+          this.stop();
+          return;
+        }
 
-          // Update time remaining based on actual elapsed time
-          const currentTime = this.getCurrentTimeRemaining();
-          this.timerState.timeRemaining = currentTime;
-
-          if (currentTime > 0) {
-            this.broadcast({
-              type: "timer_update",
-              timeRemaining: currentTime,
-              isActive: this.timerState.isActive,
-            });
-          } else {
-            // Timer finished
-            this.timerState.timeRemaining = 0;
-            this.log("info", "Timer reached zero, stopping");
-            this.stop();
-            this.broadcast({
-              type: "timer_ended",
-              timeRemaining: 0,
-              isActive: false,
-            });
-          }
-        } catch (error) {
-          this.log("error", "Error in timer update", error.message);
+        if (this.timerState.timeRemaining > 0) {
+          this.timerState.timeRemaining--;
+          this.broadcast({
+            type: "timer_update",
+            timeRemaining: this.timerState.timeRemaining,
+            isActive: this.timerState.isActive,
+          });
+        } else {
+          this.log("info", "Timer reached zero, stopping");
+          this.stop();
+          this.broadcast({
+            type: "timer_ended",
+            timeRemaining: 0,
+            isActive: false,
+          });
         }
       }, 1000);
 
@@ -255,12 +212,7 @@ class TimerManager {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
       }
-
-      // Update time remaining before stopping
-      this.updateTimeRemaining();
       this.timerState.isActive = false;
-      this.startTime = null;
-      this.baseTimeRemaining = null;
 
       this.log("info", `Timer stopped with ${this.timerState.timeRemaining} seconds remaining`);
 
@@ -271,14 +223,11 @@ class TimerManager {
       });
     } catch (error) {
       this.log("error", "Error stopping timer", error.message);
-      // Force cleanup
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
       }
       this.timerState.isActive = false;
-      this.startTime = null;
-      this.baseTimeRemaining = null;
     }
   }
 
@@ -308,14 +257,6 @@ class TimerManager {
       }
 
       const previousTime = this.timerState.timeRemaining;
-
-      // If timer is active, update current time first, then add
-      if (this.timerState.isActive) {
-        this.updateTimeRemaining();
-        // Update the base time so the added time is preserved
-        this.baseTimeRemaining = this.timerState.timeRemaining + Math.floor(seconds);
-      }
-
       this.timerState.timeRemaining += Math.floor(seconds);
 
       this.log(
@@ -323,13 +264,20 @@ class TimerManager {
         `Added ${seconds} seconds to timer (${previousTime} -> ${this.timerState.timeRemaining})`
       );
 
-      this.broadcast({
+      const broadcastData = {
         type: "time_added",
         timeRemaining: this.timerState.timeRemaining,
         isActive: this.timerState.isActive,
         addedTime: seconds,
         previousTime: previousTime,
-      });
+      };
+
+      // Include subscriber details if provided
+      if (subscriberDetails) {
+        broadcastData.subscriber = subscriberDetails;
+      }
+
+      this.broadcast(broadcastData);
     } catch (error) {
       this.log("error", "Error adding time to timer", error.message);
       throw error;
@@ -343,15 +291,12 @@ class TimerManager {
     if (this.timerState.isActive && !this.timerInterval) {
       issues.push("Timer is marked active but no interval is running");
     }
-
     if (!this.timerState.isActive && this.timerInterval) {
       issues.push("Timer is marked inactive but interval is still running");
     }
-
     if (this.errorCount >= this.maxErrors) {
       issues.push("Max error count reached");
     }
-
     if (this.lastBroadcast && now - this.lastBroadcast > 60000) {
       issues.push("No successful broadcast in last 60 seconds");
     }
@@ -362,7 +307,7 @@ class TimerManager {
       state: {
         isActive: this.timerState.isActive,
         hasInterval: !!this.timerInterval,
-        timeRemaining: this.getCurrentTimeRemaining(),
+        timeRemaining: this.timerState.timeRemaining,
         errorCount: this.errorCount,
         lastBroadcast: this.lastBroadcast,
       },
@@ -372,12 +317,7 @@ class TimerManager {
   recover() {
     const now = Date.now();
     if (this.lastRecoveryAttempt && now - this.lastRecoveryAttempt < 30000) {
-      this.log(
-        "warn",
-        `Recovery attempt ignored - cooldown active (${Math.round(
-          (30000 - (now - this.lastRecoveryAttempt)) / 1000
-        )}s remaining)`
-      );
+      this.log("warn", `Recovery attempt ignored - cooldown active`);
       return false;
     }
 
@@ -385,17 +325,13 @@ class TimerManager {
     this.log("info", "Attempting timer recovery...");
 
     try {
-      // Clean up any existing interval
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
       }
-
       this.errorCount = 0;
 
-      // If timer was supposed to be active, restart it
       if (this.timerState.isActive && this.timerState.timeRemaining > 0) {
-        const wasActive = this.timerState.isActive;
         this.timerState.isActive = false;
         this.start();
         this.log("info", "Timer recovery successful - restarted active timer");
@@ -412,7 +348,6 @@ class TimerManager {
 
   cleanup() {
     this.log("info", "Cleaning up timer...");
-
     try {
       this.stop();
       this.broadcastCallback = null;
@@ -426,12 +361,9 @@ class TimerManager {
   }
 
   getStats() {
-    this.updateTimeRemaining();
     return {
       ...this.getState(),
       hasInterval: !!this.timerInterval,
-      startTime: this.startTime,
-      baseTimeRemaining: this.baseTimeRemaining,
       errorCount: this.errorCount,
       lastBroadcast: this.lastBroadcast,
       health: this.isHealthy(),

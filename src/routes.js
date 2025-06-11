@@ -164,18 +164,29 @@ const simulateSubscription = (username, tier, type, count, recipient, months) =>
       throw new Error("Invalid type");
   }
 
-  // Add time to timer with subscriber details
+  // Create subscriber details including all the subscription information
   const subscriberDetails = {
     username,
     subCount: count,
     subType,
     tierName,
     msgId,
+    subPlan,
+    timeAdded: totalTime,
   };
 
+  // Add optional fields
+  if (recipient && type === "gift") {
+    subscriberDetails.recipient = recipient;
+  }
+  if (months && type === "resub") {
+    subscriberDetails.months = months;
+  }
+
+  // Add time to timer with complete subscriber details
   timerManager.addTime(totalTime, subscriberDetails);
 
-  // Simulate the subscription broadcast that would come from Twitch
+  // Create and broadcast the subscription event for the frontend
   const subscriptionData = {
     type: "subscription",
     username,
@@ -187,7 +198,7 @@ const simulateSubscription = (username, tier, type, count, recipient, months) =>
     subType,
   };
 
-  // Add optional fields
+  // Add optional fields to subscription data
   if (recipient && type === "gift") {
     subscriptionData.recipient = recipient;
   }
@@ -195,7 +206,7 @@ const simulateSubscription = (username, tier, type, count, recipient, months) =>
     subscriptionData.months = months;
   }
 
-  // Broadcast the subscription event
+  // Broadcast the subscription event for frontend to handle
   timerManager.broadcast(subscriptionData);
 
   return {
