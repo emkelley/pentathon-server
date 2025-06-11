@@ -1,0 +1,7 @@
+.cursor
+node_modules
+.env
+*.log
+logs/
+timer-state.json
+.pm2/

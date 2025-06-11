@@ -1,0 +1,15 @@
+export const defaultSettings = {
+  regularSubTime: 60,
+  tier2SubTime: 120,
+  tier3SubTime: 180,
+  primeSubTime: 60,
+  giftSubTime: 60,
+  timerSize: 0,
+  timerColor: "#60e9b9",
+  timerFont: "'Nunito', sans-serif",
+  timerShadowColor: "#000000",
+  timerShadowBlur: 4,
+  timerShadowOpacity: 0.3,
+  timerShadowX: 2,
+  timerShadowY: 2,
+};

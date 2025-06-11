@@ -1,0 +1,140 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 900;
+  font-style: normal;
+}
+
+body {
+  font-family: "Nunito", sans-serif;
+  background: transparent;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.timer-container {
+  text-align: center;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.title {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  background: linear-gradient(45deg, #ff6b6b, #feca57);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.timer-display {
+  /* CSS Custom Properties for dynamic styling */
+  --timer-color: #60e9b9;
+  --timer-font-family: "Nunito", sans-serif;
+  --timer-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+
+  font-size: 20vw; /* Responsive sizing based on viewport width */
+  font-weight: 700;
+  font-family: var(--timer-font-family);
+  text-shadow: var(--timer-shadow);
+  color: var(--timer-color);
+  text-align: center;
+  line-height: 1;
+  user-select: none;
+  /* Ensure minimum size */
+  min-width: 300px;
+}
+
+.timer-display.active {
+  --timer-color: #60e9b9;
+}
+
+.timer-display.ended {
+  animation: blink 1s infinite;
+}
+
+.timer-display.flash {
+}
+
+.status {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  opacity: 0.9;
+}
+
+.sub-info {
+  font-size: 1.2rem;
+  opacity: 0.8;
+  margin-top: 30px;
+}
+
+.recent-sub {
+  position: fixed;
+  top: 50px;
+  right: 50px;
+  background: rgba(76, 175, 80, 0.9);
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transform: translateX(100%);
+  transition: transform 0.5s ease;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.recent-sub.show {
+  transform: translateX(0);
+}
+
+/* Media queries for better responsive behavior */
+@media (max-width: 768px) {
+  .title {
+    font-size: 2rem;
+  }
+
+  .timer-display {
+    font-size: 15vw;
+  }
+
+  .status {
+    font-size: 1.2rem;
+  }
+
+  .recent-sub {
+    top: 20px;
+    right: 20px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .timer-display {
+    font-size: 12vw;
+  }
+}
+
+/* For very wide screens, cap the maximum size */
+@media (min-width: 1920px) {
+  .timer-display {
+    font-size: 384px; /* 20vw of 1920px */
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .timer-display {
+    text-shadow: var(--timer-shadow);
+  }
+}
