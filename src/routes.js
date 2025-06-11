@@ -234,14 +234,12 @@ router.post("/api/dev/simulate-random-sub", (req, res) => {
   }
 });
 
-// Serve public timer page
 router.get("/", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "index.html"));
-});
-
-// Serve admin page
-router.get("/admin", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "admin.html"));
+  res.send({
+    status: "ok",
+    service: "pentathon-timer",
+    uptime: process.uptime(),
+  });
 });
 
 export default router;

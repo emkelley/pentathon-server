@@ -125,7 +125,9 @@ const corsOptions = {
     if (origin.match(/^https?:\/\/\[::1\](:\d+)?$/)) {
       return callback(null, true);
     }
-
+    if (origin === "https://pentathon.emk.dev" || origin === "http://api.pentathon.emk.dev") {
+      return callback(null, true);
+    }
     // Check if origin is *.emk.dev
     if (origin.match(/^https?:\/\/.*\.emk\.dev$/)) {
       return callback(null, true);
