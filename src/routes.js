@@ -38,6 +38,17 @@ router.get("/api/settings", (req, res) => {
   res.json(timerManager.getSettings());
 });
 
+router.get("/api/settings/sub-times", (req, res) => {
+  const settings = timerManager.getSettings();
+  res.json({
+    regularSubTime: settings.regularSubTime,
+    tier2SubTime: settings.tier2SubTime,
+    tier3SubTime: settings.tier3SubTime,
+    primeSubTime: settings.primeSubTime,
+    giftSubTime: settings.giftSubTime,
+  });
+});
+
 router.post("/api/settings", (req, res) => {
   const {
     regularSubTime,

@@ -11,6 +11,7 @@ class TimerManager {
     this.timerStartTime = null;
     this.expectedTicks = 0;
     this.broadcastCallback = null;
+    this.saveStateCallback = null;
     this.errorCount = 0;
     this.maxErrors = 10;
     this.lastBroadcast = null;
@@ -26,6 +27,10 @@ class TimerManager {
 
   setBroadcastCallback(callback) {
     this.broadcastCallback = callback;
+  }
+
+  setSaveStateCallback(callback) {
+    this.saveStateCallback = callback;
   }
 
   broadcast(data) {
@@ -55,11 +60,15 @@ class TimerManager {
   }
 
   getSettings() {
+    this.log("debug", "Getting settings", this.timerState.settings);
     return { ...this.timerState.settings };
   }
 
   updateSettings(settings) {
     try {
+      this.log("debug", "Updating settings", settings);
+      this.log("debug", "Current settings before update", this.timerState.settings);
+
       // Handle existing settings
       if (typeof settings.regularSubTime === "number" && settings.regularSubTime >= 0) {
         this.timerState.settings.regularSubTime = settings.regularSubTime;
@@ -142,7 +151,23 @@ class TimerManager {
         settings: this.timerState.settings,
       });
 
+      // Save state immediately after settings update
+      if (this.saveStateCallback) {
+        try {
+          // Handle async save callback
+          const result = this.saveStateCallback();
+          if (result && typeof result.catch === "function") {
+            result.catch((error) => {
+              this.log("warn", "Failed to save state after settings update", error.message);
+            });
+          }
+        } catch (error) {
+          this.log("warn", "Failed to save state after settings update", error.message);
+        }
+      }
+
       this.log("info", "Settings updated successfully");
+      this.log("debug", "Final settings after update", this.timerState.settings);
       return { ...this.timerState.settings };
     } catch (error) {
       this.log("error", "Error updating settings", error.message);

@@ -31,6 +31,10 @@ const STATE_FILE = path.join(process.cwd(), "timer-state.json");
 const saveTimerState = async () => {
   try {
     const state = timerManager.getState();
+    log("debug", "Persistence", "Saving timer state", {
+      timeRemaining: state.timeRemaining,
+      settings: state.settings,
+    });
     await fs.writeFile(
       STATE_FILE,
       JSON.stringify({
@@ -38,6 +42,7 @@ const saveTimerState = async () => {
         lastSaved: Date.now(),
       })
     );
+    log("debug", "Persistence", "Timer state saved successfully");
   } catch (error) {
     log("error", "Persistence", "Failed to save timer state", error.message);
   }
@@ -45,9 +50,16 @@ const saveTimerState = async () => {
 
 const loadTimerState = async () => {
   try {
+    log("debug", "Persistence", "Loading timer state from file");
     const data = await fs.readFile(STATE_FILE, "utf8");
     const state = JSON.parse(data);
     const timeSinceLastSave = Date.now() - state.lastSaved;
+
+    log("debug", "Persistence", "Loaded state from file", {
+      timeRemaining: state.timeRemaining,
+      settings: state.settings,
+      timeSinceLastSave,
+    });
 
     // If timer was active and less than 5 minutes have passed, restore it
     if (state.isActive && timeSinceLastSave < 5 * 60 * 1000) {
@@ -67,6 +79,8 @@ const loadTimerState = async () => {
       timerManager.timerState.settings = state.settings;
       log("info", "Recovery", `Timer state restored: ${state.timeRemaining}s remaining (inactive)`);
     }
+
+    log("debug", "Persistence", "Timer state loaded successfully");
   } catch (error) {
     log("warn", "Recovery", "Could not restore timer state, starting fresh");
   }
@@ -267,6 +281,7 @@ const broadcast = (data) => {
 };
 
 timerManager.setBroadcastCallback(broadcast);
+timerManager.setSaveStateCallback(saveTimerState);
 twitchManager.setBroadcastCallback(broadcast);
 
 // Auto-save timer state every 30 seconds
