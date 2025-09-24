@@ -20,14 +20,18 @@ router.post("/api/timer/stop", (req, res) => {
 });
 
 router.post("/api/timer/reset", (req, res) => {
-  timerManager.reset(req.body.time || 3600);
+  const raw = req.body.time;
+  const time = typeof raw === "string" ? Number(raw) : raw;
+  const safeTime = Number.isFinite(time) && time >= 0 ? time : 3600;
+  timerManager.reset(safeTime);
   res.json({ success: true, message: "Timer reset" });
 });
 
 router.post("/api/timer/add", (req, res) => {
-  const { seconds } = req.body;
-  if (typeof seconds === "number" && seconds > 0) {
-    timerManager.addTime(seconds);
+  const raw = req.body.seconds;
+  const seconds = typeof raw === "string" ? Number(raw) : raw;
+  if (Number.isFinite(seconds) && seconds > 0) {
+    timerManager.addTime(Number(seconds));
     res.json({ success: true, message: `Added ${seconds} seconds` });
   } else {
     res.status(400).json({ success: false, message: "Invalid seconds value" });
@@ -50,39 +54,42 @@ router.get("/api/settings/sub-times", (req, res) => {
 });
 
 router.post("/api/settings", (req, res) => {
-  const {
-    regularSubTime,
-    tier2SubTime,
-    tier3SubTime,
-    primeSubTime,
-    giftSubTime,
-    timerSize,
-    // Timer styling properties
-    timerColor,
-    timerFont,
-    timerShadowColor,
-    timerShadowBlur,
-    timerShadowOpacity,
-    timerShadowX,
-    timerShadowY,
-  } = req.body;
+  console.log("[API] Received settings update request:", req.body);
 
-  const updatedSettings = timerManager.updateSettings({
-    regularSubTime,
-    tier2SubTime,
-    tier3SubTime,
-    primeSubTime,
-    giftSubTime,
-    timerSize,
-    // Timer styling properties
-    timerColor,
-    timerFont,
-    timerShadowColor,
-    timerShadowBlur,
-    timerShadowOpacity,
-    timerShadowX,
-    timerShadowY,
-  });
+  // Helper to coerce potentially string inputs to numbers safely
+  const toNumber = (val) => {
+    if (val === undefined || val === null || val === "") return undefined;
+    const n = typeof val === "string" ? Number(val) : val;
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  // Build payload including only defined/valid properties
+  const payload = {
+    // Times
+    regularSubTime: toNumber(req.body.regularSubTime),
+    tier2SubTime: toNumber(req.body.tier2SubTime),
+    tier3SubTime: toNumber(req.body.tier3SubTime),
+    primeSubTime: toNumber(req.body.primeSubTime),
+    giftSubTime: toNumber(req.body.giftSubTime),
+    timerSize: toNumber(req.body.timerSize),
+    // Styling
+    timerColor: req.body.timerColor,
+    timerFont: req.body.timerFont,
+    timerShadowColor: req.body.timerShadowColor,
+    timerShadowBlur: toNumber(req.body.timerShadowBlur),
+    timerShadowOpacity: toNumber(req.body.timerShadowOpacity),
+    timerShadowX: toNumber(req.body.timerShadowX),
+    timerShadowY: toNumber(req.body.timerShadowY),
+  };
+
+  // Remove undefined keys so updateSettings won't even see them
+  Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+  console.log("[API] Coerced settings payload:", payload);
+
+  const updatedSettings = timerManager.updateSettings(payload);
+
+  console.log("[API] Settings updated successfully:", updatedSettings);
 
   res.json({
     success: true,

@@ -63,23 +63,69 @@ class TimerManager {
 
   updateSettings(settings) {
     try {
+      this.log("info", "Updating settings", settings);
+
       // Handle existing settings
-      if (typeof settings.regularSubTime === "number" && settings.regularSubTime >= 0) {
+      if (
+        typeof settings.regularSubTime === "number" &&
+        Number.isFinite(settings.regularSubTime) &&
+        settings.regularSubTime >= 0
+      ) {
+        this.log(
+          "info",
+          `Updating regularSubTime: ${this.timerState.settings.regularSubTime} -> ${settings.regularSubTime}`
+        );
         this.timerState.settings.regularSubTime = settings.regularSubTime;
       }
-      if (typeof settings.tier2SubTime === "number" && settings.tier2SubTime >= 0) {
+      if (
+        typeof settings.tier2SubTime === "number" &&
+        Number.isFinite(settings.tier2SubTime) &&
+        settings.tier2SubTime >= 0
+      ) {
+        this.log(
+          "info",
+          `Updating tier2SubTime: ${this.timerState.settings.tier2SubTime} -> ${settings.tier2SubTime}`
+        );
         this.timerState.settings.tier2SubTime = settings.tier2SubTime;
       }
-      if (typeof settings.tier3SubTime === "number" && settings.tier3SubTime >= 0) {
+      if (
+        typeof settings.tier3SubTime === "number" &&
+        Number.isFinite(settings.tier3SubTime) &&
+        settings.tier3SubTime >= 0
+      ) {
+        this.log(
+          "info",
+          `Updating tier3SubTime: ${this.timerState.settings.tier3SubTime} -> ${settings.tier3SubTime}`
+        );
         this.timerState.settings.tier3SubTime = settings.tier3SubTime;
       }
-      if (typeof settings.primeSubTime === "number" && settings.primeSubTime >= 0) {
+      if (
+        typeof settings.primeSubTime === "number" &&
+        Number.isFinite(settings.primeSubTime) &&
+        settings.primeSubTime >= 0
+      ) {
+        this.log(
+          "info",
+          `Updating primeSubTime: ${this.timerState.settings.primeSubTime} -> ${settings.primeSubTime}`
+        );
         this.timerState.settings.primeSubTime = settings.primeSubTime;
       }
-      if (typeof settings.giftSubTime === "number" && settings.giftSubTime >= 0) {
+      if (
+        typeof settings.giftSubTime === "number" &&
+        Number.isFinite(settings.giftSubTime) &&
+        settings.giftSubTime >= 0
+      ) {
+        this.log(
+          "info",
+          `Updating giftSubTime: ${this.timerState.settings.giftSubTime} -> ${settings.giftSubTime}`
+        );
         this.timerState.settings.giftSubTime = settings.giftSubTime;
       }
-      if (typeof settings.timerSize === "number" && settings.timerSize >= 0) {
+      if (
+        typeof settings.timerSize === "number" &&
+        Number.isFinite(settings.timerSize) &&
+        settings.timerSize >= 0
+      ) {
         this.timerState.settings.timerSize = settings.timerSize;
         this.broadcast({
           type: "timer_size_update",
@@ -101,23 +147,28 @@ class TimerManager {
         this.timerState.settings.timerShadowColor = settings.timerShadowColor;
         stylingUpdated = true;
       }
-      if (typeof settings.timerShadowBlur === "number" && settings.timerShadowBlur >= 0) {
+      if (
+        typeof settings.timerShadowBlur === "number" &&
+        Number.isFinite(settings.timerShadowBlur) &&
+        settings.timerShadowBlur >= 0
+      ) {
         this.timerState.settings.timerShadowBlur = settings.timerShadowBlur;
         stylingUpdated = true;
       }
       if (
         typeof settings.timerShadowOpacity === "number" &&
+        Number.isFinite(settings.timerShadowOpacity) &&
         settings.timerShadowOpacity >= 0 &&
         settings.timerShadowOpacity <= 1
       ) {
         this.timerState.settings.timerShadowOpacity = settings.timerShadowOpacity;
         stylingUpdated = true;
       }
-      if (typeof settings.timerShadowX === "number") {
+      if (typeof settings.timerShadowX === "number" && Number.isFinite(settings.timerShadowX)) {
         this.timerState.settings.timerShadowX = settings.timerShadowX;
         stylingUpdated = true;
       }
-      if (typeof settings.timerShadowY === "number") {
+      if (typeof settings.timerShadowY === "number" && Number.isFinite(settings.timerShadowY)) {
         this.timerState.settings.timerShadowY = settings.timerShadowY;
         stylingUpdated = true;
       }
@@ -144,6 +195,7 @@ class TimerManager {
 
       if (this.saveStateCallback) {
         try {
+          this.log("info", "Settings updated - triggering state save");
           const result = this.saveStateCallback();
           if (result && typeof result.catch === "function") {
             result.catch((error) => {
@@ -153,8 +205,11 @@ class TimerManager {
         } catch (error) {
           this.log("warn", "Failed to save state after settings update", error.message);
         }
+      } else {
+        this.log("warn", "No saveStateCallback set - settings won't be persisted");
       }
 
+      this.log("info", "Final settings after update", this.timerState.settings);
       return { ...this.timerState.settings };
     } catch (error) {
       this.log("error", "Error updating settings", error.message);

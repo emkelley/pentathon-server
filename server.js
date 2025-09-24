@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import fs from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 import { timerManager } from "./src/timer.js";
 import { webSocketManager } from "./src/websocket.js";
 import { twitchManager } from "./src/twitch.js";
@@ -19,30 +20,30 @@ const log = (level, module, message, data = null) => {
   if (data) {
     console.log(JSON.stringify(data, null, 2));
   }
-
-  // TODO: In production, write to log files for debugging
-  // You could uncomment this for file logging:
-  // fs.appendFile('app.log', logMessage + '\n').catch(() => {});
 };
 
 // State persistence for timer recovery
-const STATE_FILE = path.join(process.cwd(), "timer-state.json");
+// Use path relative to this file to avoid relying on process.cwd()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const STATE_FILE = path.join(__dirname, "timer-state.json");
 
 const saveTimerState = async () => {
   try {
     const state = timerManager.getState();
+    const stateToSave = {
+      ...state,
+      lastSaved: Date.now(),
+    };
+
     log("debug", "Persistence", "Saving timer state", {
-      timeRemaining: state.timeRemaining,
-      settings: state.settings,
+      timeRemaining: stateToSave.timeRemaining,
+      settings: stateToSave.settings,
     });
-    await fs.writeFile(
-      STATE_FILE,
-      JSON.stringify({
-        ...state,
-        lastSaved: Date.now(),
-      })
-    );
-    log("debug", "Persistence", "Timer state saved successfully");
+
+    await fs.writeFile(STATE_FILE, JSON.stringify(stateToSave));
+
+    log("info", "Persistence", "Timer state saved successfully");
   } catch (error) {
     log("error", "Persistence", "Failed to save timer state", error.message);
   }
@@ -67,7 +68,39 @@ const loadTimerState = async () => {
       const adjustedTime = Math.max(0, state.timeRemaining - secondsElapsed);
 
       timerManager.timerState.timeRemaining = adjustedTime;
-      timerManager.timerState.settings = state.settings;
+      // Coerce any numeric-like strings back to numbers to avoid reapplying defaults later
+      const s = state.settings || {};
+      const toNum = (v) => (typeof v === "string" ? Number(v) : v);
+      const restoredSettings = {
+        ...s,
+        regularSubTime: Number.isFinite(toNum(s.regularSubTime))
+          ? toNum(s.regularSubTime)
+          : s.regularSubTime,
+        tier2SubTime: Number.isFinite(toNum(s.tier2SubTime))
+          ? toNum(s.tier2SubTime)
+          : s.tier2SubTime,
+        tier3SubTime: Number.isFinite(toNum(s.tier3SubTime))
+          ? toNum(s.tier3SubTime)
+          : s.tier3SubTime,
+        primeSubTime: Number.isFinite(toNum(s.primeSubTime))
+          ? toNum(s.primeSubTime)
+          : s.primeSubTime,
+        giftSubTime: Number.isFinite(toNum(s.giftSubTime)) ? toNum(s.giftSubTime) : s.giftSubTime,
+        timerSize: Number.isFinite(toNum(s.timerSize)) ? toNum(s.timerSize) : s.timerSize,
+        timerShadowBlur: Number.isFinite(toNum(s.timerShadowBlur))
+          ? toNum(s.timerShadowBlur)
+          : s.timerShadowBlur,
+        timerShadowOpacity: Number.isFinite(toNum(s.timerShadowOpacity))
+          ? toNum(s.timerShadowOpacity)
+          : s.timerShadowOpacity,
+        timerShadowX: Number.isFinite(toNum(s.timerShadowX))
+          ? toNum(s.timerShadowX)
+          : s.timerShadowX,
+        timerShadowY: Number.isFinite(toNum(s.timerShadowY))
+          ? toNum(s.timerShadowY)
+          : s.timerShadowY,
+      };
+      timerManager.timerState.settings = restoredSettings;
 
       if (adjustedTime > 0) {
         timerManager.start();
@@ -76,7 +109,40 @@ const loadTimerState = async () => {
     } else {
       // Just restore the time and settings, don't auto-start
       timerManager.timerState.timeRemaining = state.timeRemaining;
-      timerManager.timerState.settings = state.settings;
+      const s2 = state.settings || {};
+      const toNum2 = (v) => (typeof v === "string" ? Number(v) : v);
+      const restoredSettings2 = {
+        ...s2,
+        regularSubTime: Number.isFinite(toNum2(s2.regularSubTime))
+          ? toNum2(s2.regularSubTime)
+          : s2.regularSubTime,
+        tier2SubTime: Number.isFinite(toNum2(s2.tier2SubTime))
+          ? toNum2(s2.tier2SubTime)
+          : s2.tier2SubTime,
+        tier3SubTime: Number.isFinite(toNum2(s2.tier3SubTime))
+          ? toNum2(s2.tier3SubTime)
+          : s2.tier3SubTime,
+        primeSubTime: Number.isFinite(toNum2(s2.primeSubTime))
+          ? toNum2(s2.primeSubTime)
+          : s2.primeSubTime,
+        giftSubTime: Number.isFinite(toNum2(s2.giftSubTime))
+          ? toNum2(s2.giftSubTime)
+          : s2.giftSubTime,
+        timerSize: Number.isFinite(toNum2(s2.timerSize)) ? toNum2(s2.timerSize) : s2.timerSize,
+        timerShadowBlur: Number.isFinite(toNum2(s2.timerShadowBlur))
+          ? toNum2(s2.timerShadowBlur)
+          : s2.timerShadowBlur,
+        timerShadowOpacity: Number.isFinite(toNum2(s2.timerShadowOpacity))
+          ? toNum2(s2.timerShadowOpacity)
+          : s2.timerShadowOpacity,
+        timerShadowX: Number.isFinite(toNum2(s2.timerShadowX))
+          ? toNum2(s2.timerShadowX)
+          : s2.timerShadowX,
+        timerShadowY: Number.isFinite(toNum2(s2.timerShadowY))
+          ? toNum2(s2.timerShadowY)
+          : s2.timerShadowY,
+      };
+      timerManager.timerState.settings = restoredSettings2;
       log("info", "Recovery", `Timer state restored: ${state.timeRemaining}s remaining (inactive)`);
     }
 
@@ -283,6 +349,20 @@ const broadcast = (data) => {
 timerManager.setBroadcastCallback(broadcast);
 timerManager.setSaveStateCallback(saveTimerState);
 twitchManager.setBroadcastCallback(broadcast);
+
+// Send current timer snapshot to any newly connected WebSocket client
+webSocketManager.setOnClientConnected((ws) => {
+  try {
+    const state = timerManager.getState();
+    webSocketManager.sendToClient(ws, {
+      type: "timer_update",
+      timeRemaining: state.timeRemaining,
+      isActive: state.isActive,
+    });
+  } catch (error) {
+    log("warn", "WebSocket", "Failed to send initial timer state", error.message);
+  }
+});
 
 // Auto-save timer state every 30 seconds
 setInterval(saveTimerState, 30000);

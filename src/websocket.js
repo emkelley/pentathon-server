@@ -6,6 +6,7 @@ class WebSocketManager {
     this.clients = new Set();
     this.heartbeatInterval = null;
     this.heartbeatIntervalMs = 30000; // 30 seconds
+    this.onClientConnected = null;
   }
 
   log(level, message, data = null) {
@@ -48,6 +49,15 @@ class WebSocketManager {
           type: "connection_established",
           timestamp: Date.now(),
         });
+
+        // Allow server to send an immediate snapshot (e.g., current timer state)
+        if (typeof this.onClientConnected === "function") {
+          try {
+            this.onClientConnected(ws);
+          } catch (error) {
+            this.log("warn", "onClientConnected handler error", error.message);
+          }
+        }
       });
 
       this.wss.on("error", (error) => {
@@ -189,6 +199,10 @@ class WebSocketManager {
         `Heartbeat: ${activeClients} active clients, ${deadClients} dead clients removed`
       );
     }
+  }
+
+  setOnClientConnected(callback) {
+    this.onClientConnected = callback;
   }
 
   broadcast(data) {
